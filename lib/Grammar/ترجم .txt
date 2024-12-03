@@ -1,0 +1,143 @@
+import 'package:flutter/material.dart';
+import 'package:tb/Screens/Grammar/PresentSimpleExercisesScreen.dart';
+
+class PresentSimpleLesson extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1B1F23),
+      appBar: AppBar(
+        title: Text(
+          "Present Simple",
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF2C3A47),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    "Present Simple Tense",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4FC3F7),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Explanation
+                  Text(
+                    "The Present Simple is used to describe:",
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  const SizedBox(height: 10),
+                  BulletPoint(text: "General facts."),
+                  BulletPoint(text: "Daily habits."),
+                  BulletPoint(text: "Schedules."),
+
+                  const Divider(color: Colors.white, height: 30),
+
+                  // Form
+                  Text(
+                    "Form:",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  BulletPoint(
+                      text:
+                          "Affirmative: Subject + Base Verb (+s/es for he/she/it).\nExample: He plays football."),
+                  BulletPoint(
+                      text:
+                          "Negative: Subject + Do/Does not + Base Verb.\nExample: They do not (don't) like pizza."),
+                  BulletPoint(
+                      text:
+                          "Question: Do/Does + Subject + Base Verb?\nExample: Does she work here?"),
+
+                  const Divider(color: Colors.white, height: 30),
+
+                  // Examples
+                  Text(
+                    "Examples:",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  BulletPoint(text: "I eat breakfast every day."),
+                  BulletPoint(text: "She studies English every evening."),
+                  BulletPoint(text: "The train leaves at 7 PM."),
+                ],
+              ),
+            ),
+          ),
+          // Start Exercises Button
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                // Navigate to exercises page or perform an action
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MyQuizApp()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4FC3F7), // Button color
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 17.0, horizontal: 120.0),
+              ),
+              child: Text(
+                "Start Exercises",
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Bullet Point Widget
+class BulletPoint extends StatelessWidget {
+  final String text;
+
+  BulletPoint({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("• ",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Dummy Exercises Page

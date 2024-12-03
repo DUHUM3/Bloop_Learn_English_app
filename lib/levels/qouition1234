@@ -1,0 +1,333 @@
+import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
+
+class InteractiveExerciseScreen extends StatefulWidget {
+  @override
+  _InteractiveExerciseScreenState createState() =>
+      _InteractiveExerciseScreenState();
+}
+
+class _InteractiveExerciseScreenState extends State<InteractiveExerciseScreen> {
+  late AudioPlayer _audioPlayer;
+
+  int currentExercise = 0;
+
+  List<Map<String, dynamic>> exercises = [
+    {
+      'type': 'choice',
+      'title': 'اختيار الإجابة الصحيحة',
+      'question': 'I ___ English',
+      'answers': ['Love', 'hate', 'like', 'what'],
+      'correct': 2,
+      'audio': 'assets/sounds/I hate English.mp3',
+    },
+    {
+      'type': 'reorder',
+      'title': 'ترتيب الجملة',
+      'question': 'Arrange the sentence:',
+      'correctOrder': ['I', 'love', 'learning', 'English'],
+      'audio': 'assets/sounds/sound.mp3',
+    },
+    {
+      'type': 'fillBlank',
+      'title': 'إكمال الجملة',
+      'question': 'Age is not _____',
+      'translation': 'العمر ليس مهماً',
+      'correct': 'important',
+      'audio': '',
+    },
+    {
+      'type': 'audioChoice', // النوع الجديد
+      'title': 'اختيار الإجابة الصحيحة بناءً على الصوت',
+      'question': 'What is the sound?',
+      'answers': ['صوت كلب', 'صوت قطة'],
+      'correct': 0,  // الإجابة الصحيحة هي الخيار الأول
+      'audio': [
+        'assets/sounds/dog_bark.mp3', // صوت الكلب
+        'assets/sounds/cat_meow.mp3', // صوت القطة
+      ],
+    },
+  ];
+
+  List<String> userReorderedWords = [];
+  List<String> shuffledWords = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+    initializeReorderQuestion();
+  }
+
+  void initializeReorderQuestion() {
+    if (exercises[currentExercise]['type'] == 'reorder') {
+      shuffledWords = List.from(exercises[currentExercise]['correctOrder'])..shuffle();
+      userReorderedWords = [];
+    }
+  }
+
+  void nextExercise() {
+    if (currentExercise < exercises.length - 1) {
+      setState(() {
+        currentExercise++;
+        initializeReorderQuestion();
+      });
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('تمت التمارين'),
+            content: Text('لقد أنهيت التمارين.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('إغلاق'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  Future<void> playAudio(String audioPath) async {
+    try {
+      await _audioPlayer.setAsset(audioPath);
+      await _audioPlayer.play();
+    } catch (e) {
+      print('Error playing audio: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double progress = (currentExercise + 1) / exercises.length;
+    final current = exercises[currentExercise];
+
+    return Scaffold(
+      backgroundColor: Color(0xFF1B1F23),
+      appBar: AppBar(
+        backgroundColor: Color(0xFF2C3A47),
+        title: Text('تمارين تفاعلية'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          // Progress Bar at the top with rounded corners and RTL direction
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Directionality(
+                textDirection: TextDirection.rtl, // Right to left
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.white30,
+                  color: Color(0xFF0288D1),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
+
+          // Title of the exercise aligned to the right
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Text(
+              current['title'],
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          SizedBox(height: 20),
+
+          // Blue box around the question text (same size as other items)
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              border: Border.all(color: Colors.blue, width: 2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  current['question'],
+                  style: TextStyle(fontSize: 20, color: Colors.white),
+                ),
+                IconButton(
+                  icon: Icon(Icons.volume_up, color: Colors.blue),
+                  onPressed: () {
+                    playAudio(current['audio'][0]);
+                  },
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 20),
+
+          // Different question types
+          if (current['type'] == 'choice') ...[
+            ...current['answers'].asMap().entries.map((entry) => ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF0288D1),
+                  ),
+                  onPressed: () => nextExercise(),
+                  child: Text(entry.value),
+                )),
+          ] else if (current['type'] == 'reorder') ...[
+            // Reorder with a simple line instead of a box
+            Container(
+              height: 150,
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(horizontal: 30),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.blue, width: 2),
+                  bottom: BorderSide(color: Colors.blue, width: 2),
+                ),
+              ),
+              child: DragTarget<String>(
+                onAccept: (data) {
+                  setState(() {
+                    userReorderedWords.add(data);
+                    shuffledWords.remove(data);
+                  });
+                },
+                onWillAccept: (data) => true,
+                builder: (context, candidateData, rejectedData) {
+                  return Wrap(
+                    spacing: 8.0,
+                    children: userReorderedWords
+                        .map((word) => GestureDetector(
+                              onLongPress: () {
+                                setState(() {
+                                  userReorderedWords.remove(word);
+                                  shuffledWords.add(word);
+                                });
+                              },
+                              child: Chip(
+                                label: Text(word, style: TextStyle(fontSize: 18)),
+                                backgroundColor: Colors.green,
+                              ),
+                            ))
+                        .toList(),
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: 20),
+            Wrap(
+              spacing: 8.0,
+              children: shuffledWords
+                  .map(
+                    (word) => Draggable<String>(
+                      data: word,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: Chip(
+                          label: Text(word, style: TextStyle(fontSize: 18)),
+                          backgroundColor: Colors.blue,
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.5,
+                        child: Chip(
+                          label: Text(word, style: TextStyle(fontSize: 18)),
+                          backgroundColor: Colors.blue,
+                        ),
+                      ),
+                      child: Chip(
+                        label: Text(word, style: TextStyle(fontSize: 18)),
+                        backgroundColor: Colors.blue,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0288D1)),
+              onPressed: nextExercise,
+              child: Text('تحقق من الإجابة'),
+            ),
+          ] else if (current['type'] == 'fillBlank') ...[
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'أدخل الكلمة المفقودة',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (value) {
+                  if (value.trim().toLowerCase() == current['correct'].toLowerCase()) {
+                    nextExercise();
+                  } else {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('إجابة خاطئة'),
+                        content: Text('الإجابة الصحيحة هي: ${current['correct']}'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: Text('حاول مرة أخرى'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+            Text(
+              current['translation'],
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          ] else if (current['type'] == 'audioChoice') ...[
+            // السؤال من نوع اختيار الصوت
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    playAudio(current['audio'][0]);
+                    // إضافة المنطق للتحقق من الإجابة الصحيحة
+                    if (current['correct'] == 0) {
+                      nextExercise();
+                    }
+                  },
+                  child: Text(current['answers'][0]),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    playAudio(current['audio'][1]);
+                    // إضافة المنطق للتحقق من الإجابة الصحيحة
+                    if (current['correct'] == 1) {
+                      nextExercise();
+                    }
+                  },
+                  child: Text(current['answers'][1]),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+}

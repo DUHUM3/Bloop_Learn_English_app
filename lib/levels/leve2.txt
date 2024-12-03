@@ -1,0 +1,259 @@
+import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart'; // مكتبة just_audio
+import 'package:tb/Screens/widgets/hearts_widget.dart'; // تأكد من استيراد الودجت بشكل صحيح
+
+class InteractiveExerciseScreen extends StatefulWidget {
+  @override
+  _InteractiveExerciseScreenState createState() =>
+      _InteractiveExerciseScreenState();
+}
+
+class _InteractiveExerciseScreenState extends State<InteractiveExerciseScreen> {
+  final GlobalKey<HeartsWidgetState> _heartsKey =
+      GlobalKey<HeartsWidgetState>(); // مفتاح التحكم بالقلوب
+  late AudioPlayer _audioPlayer; // تعريف مشغل الصوت
+
+  int currentExercise = 0;
+
+  List<Map<String, dynamic>> exercises = [
+    {
+      'type': 'choice',
+      'question': 'I ___ English',
+      'answers': ['Love', 'hate', 'like', 'what'],
+      'correct': 2,
+      'audio': 'assets/sounds/I hate English.mp3',
+    },
+    {
+      'type': 'reorder',
+      'question': 'Arrange the sentence:',
+      'correctOrder': ['I', 'love', 'learning', 'English'],
+      'audio': 'assets/sounds/sound.mp3',
+    },
+    {
+      'type': 'choice',
+      'question': 'What is 5 + 3?',
+      'answers': ['5', '8', '10', '7'],
+      'correct': 1,
+      'audio': 'assets/audio/question2.mp3',
+    },
+  ];
+
+  List<String> userReorderedWords = []; // قائمة كلمات المستخدم
+  List<String> shuffledWords = []; // الكلمات المبعثرة
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer(); // تهيئة مشغل الصوت
+    initializeReorderQuestion(); // تهيئة كلمات الترتيب
+  }
+
+  void initializeReorderQuestion() {
+    if (exercises[currentExercise]['type'] == 'reorder') {
+      shuffledWords = List.from(exercises[currentExercise]['correctOrder'])
+        ..shuffle(); // بعثرة الكلمات
+      userReorderedWords = []; // بدء قائمة المستخدم فارغة
+    }
+  }
+
+  void checkAnswer(int selectedAnswer) {
+    if (selectedAnswer != exercises[currentExercise]['correct']) {
+      _heartsKey.currentState?.decreaseHeart();
+    }
+    nextExercise();
+  }
+
+  void checkReorderAnswer() {
+    if (userReorderedWords.join(' ') !=
+        (exercises[currentExercise]['correctOrder'] as List).join(' ')) {
+      _heartsKey.currentState?.decreaseHeart();
+    }
+    nextExercise();
+  }
+
+  void nextExercise() {
+    if (currentExercise < exercises.length - 1) {
+      setState(() {
+        currentExercise++;
+        initializeReorderQuestion(); // تحديث ترتيب الكلمات إذا كان السؤال ترتيب
+      });
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('تمت التمارين'),
+            content: Text('لقد أنهيت التمارين.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('إغلاق'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  Future<void> playAudio(String audioPath) async {
+    try {
+      await _audioPlayer.setAsset(audioPath);
+      await _audioPlayer.play();
+    } catch (e) {
+      print('Error playing audio: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double progress = (currentExercise + 1) / exercises.length;
+    final current = exercises[currentExercise];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('تمارين تفاعلية'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          HeartsWidget(key: _heartsKey),
+          SizedBox(height: 20),
+          if (current['type'] == 'choice') ...[
+            Text(current['question'], style: TextStyle(fontSize: 20)),
+            IconButton(
+              icon: Icon(Icons.volume_up),
+              onPressed: () => playAudio(current['audio']),
+            ),
+            ...current['answers']
+                .asMap()
+                .entries
+                .map((entry) => ElevatedButton(
+                      onPressed: () => checkAnswer(entry.key),
+                      child: Text(entry.value),
+                    )),
+          ] else if (current['type'] == 'reorder') ...[
+            Text(current['question'], style: TextStyle(fontSize: 20)),
+            IconButton(
+              icon: Icon(Icons.volume_up),
+              onPressed: () => playAudio(current['audio']),
+            ),
+            Container(
+              height: 100,
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ReorderableListView(
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (oldIndex < newIndex) {
+                      newIndex -= 1;
+                    }
+                    final item = userReorderedWords.removeAt(oldIndex);
+                    userReorderedWords.insert(newIndex, item);
+                  });
+                },
+                children: userReorderedWords
+                    .map(
+                      (word) => ListTile(
+                        key: ValueKey(word),
+                        title: Chip(
+                          label: Text(word),
+                          backgroundColor: Colors.green,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            SizedBox(height: 20),
+            Wrap(
+              spacing: 8.0,
+              children: shuffledWords
+                  .map(
+                    (word) => Draggable<String>(
+                      data: word,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: Chip(
+                          label: Text(word, style: TextStyle(fontSize: 18)),
+                          backgroundColor: Colors.blue,
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.5,
+                        child: Chip(
+                          label: Text(word, style: TextStyle(fontSize: 18)),
+                          backgroundColor: Colors.blue,
+                        ),
+                      ),
+                      child: Chip(
+                        label: Text(word, style: TextStyle(fontSize: 18)),
+                        backgroundColor: Colors.blue,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            SizedBox(height: 20),
+            DragTarget<String>(
+              onAccept: (data) {
+                setState(() {
+                  userReorderedWords.add(data);
+                  shuffledWords.remove(data);
+                });
+              },
+              onWillAccept: (data) {
+                return true; // السماح بإسقاط الكلمة
+              },
+              builder: (context, candidateData, rejectedData) {
+                return Container(
+                  height: 50,
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Wrap(
+                    spacing: 8.0,
+                    children: userReorderedWords
+                        .map((word) => GestureDetector(
+                              onLongPress: () {
+                                // حذف الكلمة عند الضغط عليها لفترة طويلة
+                                setState(() {
+                                  userReorderedWords.remove(word);
+                                  shuffledWords.add(word);
+                                });
+                              },
+                              child: Chip(
+                                label: Text(word, style: TextStyle(fontSize: 18)),
+                                backgroundColor: Colors.green,
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: checkReorderAnswer,
+              child: Text('تحقق من الإجابة'),
+            ),
+          ],
+          LinearProgressIndicator(value: progress),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+}
